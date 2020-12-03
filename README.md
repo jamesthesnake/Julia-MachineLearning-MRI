@@ -1,7 +1,4 @@
-# Automatic Brain Tumor Segmentation
-
-Note: This project is not currently active. It is likely outdated and buggy. I unfortunately do not have the time to update it or keep up with pull requests. 
-
+JULIA-MRI-ML
 Brain tumor segmentation seeks to separate healthy tissue from tumorous regions such as the advancing tumor, necrotic core and surrounding edema. This is an essential step in diagnosis and treatment planning, both of which need to take place quickly in the case of a malignancy in order to maximize the likelihood of successful treatment. Due to the slow and tedious nature of manual segmentation, there is a high demand for computer algorithms that can do this quickly and accurately.
 
 ## Table of Contents
@@ -41,7 +38,6 @@ One of the challenges in working with MRI data is dealing with the artifacts pro
 <img alt="Bias correction before and after" src="images/n4_correction.png" width=200>  
 <sub><b>Figure 3:</b> Brain scans before and after n4ITK bias correction. Notice the higher intensity at the bottom of the image on the right. This can be a source of false positives in a computer segmentation. </sub>  
 
-I employed an [n4ITK bias correction](http://www.ncbi.nlm.nih.gov/pubmed/20378467) on all T1 and T1C images in the dataset ([code](https://github.com/naldeborgh7575/brain_segmentation/blob/master/code/n4_bias_correction.py)), which removed the intensity gradient on each scan. Additional image pre-processing requires standardizing the pixel intensities, since MRI intensities are expressed in arbitrary units and may differ significantly between machines used and scan times.
 
 ### Pulse sequences
 There are multiple radio frequency pulse sequences that can be used to illuminate different types of tissue. For adequate segmentation there are often four different unique sequences acquired: Fluid Attenuated Inversion Recovery (FLAIR), T1, T1-contrasted, and T2 (Figure 4). Each of these pulse sequences exploits the distinct chemical and physiological characteristics of various tissue types, resulting in contrast between the individual classes. Notice the variability in intensities among the four images in Figure 4, all of which are images of the same brain taken with different pulse sequences.
@@ -72,7 +68,7 @@ High-grade malignant brain tumors are generally associated with a short life exp
 
 ## Convolutional Neural Networks
 
-Convolutional Neural Networks(CNNs) are a powerful tool in the field of image recognition. They were inspired in the late 1960s by the elucidation of how the [mammalian visual cortex works](https://en.wikipedia.org/wiki/Receptive_field): many networks neurons sensitive to a given 'receptive field' tiled over the entire visual field<sup>[2](#references)</sup>. This aspect of CNNs contributes to their high flexibility and spatial invariance, making them ideal candidates for semantic segmentatiaon of images with high disparity in locations of objects of interest. CNNs are a powerful tool in machine learning that are well suited for the challenging problem tackled in this project.
+Convolutional Neural Networks(CNNs) are a powerful tool in the field of image recognition. They were inspired in the late 1960s by the elucidation of how the [mammalian visual cortex works](https://en.wikipedia.org/wiki/Receptive_field): many networks neurons sensitive to a given 'receptive field' tiled over the entire visual field<sup>[2](#references)</sup>. This aspect of CNNs contributes to their high flexibility and spatial invariance, making them ideal candidates for semantic segmentatiaon of images with high disparity in locations of objects of interest. CNNs are a powerful tool in machine learning .
 
 ### Model Architecture ([code](https://github.com/naldeborgh7575/brain_segmentation/blob/master/code/Segmentation_Models.py))
 
@@ -82,53 +78,6 @@ I use a four-layer Convolutional Neural Network (CNN) model that, besides [n4ITK
 <sub><b>Figure 6: </b> Basic model architecture of my segmentation model. Input is four 33x33 patches from a randomly selected slice. Each imaging pulse sequence is input as a channel into the net, followed by four convolution/max pooling layers (note- the last convolutional layer is not followed by max pooling). </sub>
 
 
-### Training the Model
-
-I created the model using Keras and ran it on an Amazon AWS GPU-optimized EC2 instance. I tested several models, but elected to use the 4-layer sequential model shown in Figure 6 due to the two-week time constraint of the project, as it had best initial results and fastest run time.
-
-The model was trained on randomly selected 33x33 patches of MRI images to classify the center pixel. Each input has 4 channels, one for each imaging sequence, so the net can learn what relative pixel intensities are hallmarks of each given class. The model is trained on approximately 50,000 patches for six epochs. The model generally begins to overfit after six epochs, and the validation accuracy on balanced classes reaches approximately 55 percent. [Future directions](#future-directions) will include more training phases and updated methods for patch selection.
-
-### Patch Selection ([code](https://github.com/naldeborgh7575/brain_segmentation/blob/master/code/patch_library.py))
-The purpose of training the model on patches (Figure 8) is to exploit the fact that a class of any given voxel is highly dependent on the class of it's surrounding voxels. Patches give the net access to information about the pixel's local environment, which influences the final prediction of the patch.
-
-<img alt="Examples of T1c patches used as input." src="images/patches.png" width=800>  
-<sub><b> Figure 8: </b> Examples of 33 x 33 pixel patches used as input for the neural network. These particular patches were acquired with a T1C pulse sequence, but the actual input includes all pulse sequences. </sub>
-
-Another important factor in patch selection is to make sure the classes of the input data are balanced. Otherwise, the net will be overwhelmed with background images and fail to classify any of the minority classes. Approximately 98% of the data belongs to the background class (healthy tissue or the black surrounding area), with the remaining 2% of pixels divided among the four tumor classes.
-
-I tried out several different methods for sampling patches, which had a large impact on the results. I began randomly selecting patches of a given class from the data and repeating this for all five classes. However, with this sampling method approximately half of the background patches were just the zero-intensity area with no brain, so the model classified most patches with brain tissue as tumor, and only the black areas as background (Figure 9).
-
-<img alt='Results of initial segmentation' src='images/bad_example.png' height=200>
-<img alt="Improved segmentation results after restricting the amount of " src="images/improved_seg.png" height=200>  
-<sub><b> Figure 9: </b> (Left) results of segmentation without excluding exclusively zero-intensity patches. Notice that even healthy tissue is classified as tumor. (Right) results of segmentation after restricting the amount of zero-intensity pixels allowed in a given patch. The tumor prediction is now restricted mostly to the actual area of the lesion </sub>  
-
-I then restricted the selection process to exclude patches in which more than 25% of the pixels were of zero-intensity. This greatly improved the results, one of which can be seen on the right in Figure 9.
-
-Unfortunately the model still struggles with class boundary segmentation. The boundaries in my results are quite smooth, while the ground truth tends to have more detail. This is a downside to working with patch-based prediction, since the predicted identity of boundary pixels is influenced by neighbors of a different class. A method I've played to fix this involves selecting a certain subset of the training data from the highest entropy patches in the ground truth segmentation. High entropy patches have more classes represented in them, so the model will have more boundary examples to learn from. I am still fine tuning this process and will be updating the results accordingly.
-
-
-### Results
-
-Below is a summary of how well the current model is predicting. As more advances are made this section will be updated. A representative example of a tumor segmentation on test data is displayed in Figure 10. The model can identify each of the four classes with a good amount of accuracy, with the exception of class boundaries, which are smoother in my prediction than the ground truth.
-
-<img alt="Result Frame" src="images/results.png" width=404>  
-<img alt='Ground Truth: Professional Segmentation' src='images/gt.gif' width=200>
-<img alt='Results of CNN Model' src='images/my_res.gif' width=200>  
-<sub><b> Figure 10: </b> Results of CNN model segmentation on a single slice (top) with respect to the ground truth, and a 3D representation of the segmentation (bottom). </sub>
-
-Notice that towards the top of the 3-dimensional network results representation some of the cerebrospinal fluid (CSF) is incorrectly classified as tumor. This is unsurprising, considering that the CSF has similar features to parts of the tumor in some pulse sequences. There are several potential solutions for this:
-
-1. Pre-process the images by masking CSF (much easier than tumors to extract)
-2. Train the model on more CSF-containing patches so it can learn to distinguish between CSF and tumor
-3. Add more nodes to the model, which may cause it to learn more features from the current patches.
-
-
-
-## Future Directions
-
-While my model yields promising results, an application such as this leaves no room for errors or false positives. In a surgical setting it is essential to remove as much of the tumor mass as possible without damaging any surrounding healthy tissue. There are countless ways to improve this model, ranging from the overall architecture, to adjusting how we sample the data.
-
-When I began building the model I built an architecture based on one built by [Havaei et al](http://arxiv.org/pdf/1505.03540.pdf), which uses a cascaded, two-pathway architecture and looks at both local and global features of patches. I elected to use the simpler model to meet the two-week deadline for this project, but in the future I will work on tuning models similar to this to improve upon the accuracy of this model.
 
 ## References
 
