@@ -12,7 +12,6 @@ Brain tumor segmentation seeks to separate healthy tissue from tumorous regions 
     * [Model Architecture](#model-architecture)
     * [Training the Model](#training-the-model)  
     * [Patch Selection](#patch-selection)
-    * [Results](#results)
 5. [Future Directions](#future-directions)
 
 ## Dataset
