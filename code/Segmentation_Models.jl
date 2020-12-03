@@ -22,9 +22,10 @@ slh = unseeded_region_growing(lh,0.15)
     model.fit_model(X, y)
     model.save_model('models/example')
 
-    # tests = glob('test_data/2_*')
-    # test_sort = sorted(tests, key= lambda x: int(x[12:-4]))
-    # model = BasicModel(loaded_model=True)
-    # segmented_images = []
-    # for slice in test_sort[15:145]:
-    #     segmented_images.append(model.show_segmented_image(slice))
+    tests = glob('test_data/2_*')
+    test_sort = sorted(tests, by= x-> int(x[12:-4]))
+    model = BasicModel(loaded_model=True)
+    segmented_images = []
+    for slice in test_sort[15:145]:
+         push!(segmented_images,model.show_segmented_image(slice))
+    end
