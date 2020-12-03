@@ -1,6 +1,6 @@
 import numpy as np
-import subprocess
-import random
+using communicate
+using Random
 import progressbar
 from glob import glob
 from skimage import io
